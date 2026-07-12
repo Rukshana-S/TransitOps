@@ -10,9 +10,8 @@ import { getTrips, createTrip, updateTrip, deleteTrip } from '../controllers/tri
 import { getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance } from '../controllers/maintenanceController.js';
 import { getFuelLogs, createFuelLog, updateFuelLog, deleteFuelLog } from '../controllers/fuelController.js';
 import { getExpenses, createExpense, updateExpense, deleteExpense } from '../controllers/expenseController.js';
-import { getReports, createReport } from '../controllers/reportController.js';
+import { getReports, createReport, deleteReport } from '../controllers/reportController.js';
 import { getNotifications, createNotification, markAsRead } from '../controllers/notificationController.js';
-import { getAssignments, createAssignment, deleteAssignment } from '../controllers/assignmentController.js';
 
 const router = express.Router();
 
@@ -65,15 +64,12 @@ router.delete('/expenses/:id', protect, restrictTo('Fleet Manager', 'Financial A
 // 9. Reports routes (Fleet Manager / Financial Analyst: CRUD, Others: Read-only)
 router.get('/reports', protect, getReports);
 router.post('/reports', protect, restrictTo('Fleet Manager', 'Financial Analyst'), createReport);
+router.post('/reports/compile', protect, restrictTo('Fleet Manager', 'Financial Analyst'), createReport);
+router.delete('/reports/:id', protect, restrictTo('Fleet Manager', 'Financial Analyst'), deleteReport);
 
 // 10. Notifications routes
 router.get('/notifications', protect, getNotifications);
 router.post('/notifications', protect, createNotification);
 router.put('/notifications/:id/read', protect, markAsRead);
-
-// 11. Assignments routes
-router.get('/assignments', protect, getAssignments);
-router.post('/assignments', protect, restrictTo('Fleet Manager'), createAssignment);
-router.delete('/assignments/:vehicleId', protect, restrictTo('Fleet Manager'), deleteAssignment);
 
 export default router;

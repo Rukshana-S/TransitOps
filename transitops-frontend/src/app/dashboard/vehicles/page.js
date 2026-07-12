@@ -12,7 +12,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 
 export default function VehiclesPage() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated, role } = useAuth();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -188,11 +188,13 @@ export default function VehiclesPage() {
           <h2 className="mt-1 text-3xl font-semibold text-white">Vehicle Registry</h2>
           <p className="mt-2 text-sm text-[#CAC4DA]">Verify registration states, check current telemetry and fuel readings.</p>
         </div>
-        <div>
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Vehicle
-          </Button>
-        </div>
+        {role === 'Fleet Manager' && (
+          <div>
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add Vehicle
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Control panel */}
@@ -246,7 +248,7 @@ export default function VehiclesPage() {
                   <th className="px-4 py-3 text-left">Mileage</th>
                   <th className="px-4 py-3 text-left">Fuel / Battery</th>
                   <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-center">Actions</th>
+                  {role === 'Fleet Manager' && <th className="px-4 py-3 text-center">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
@@ -287,22 +289,24 @@ export default function VehiclesPage() {
                         {vehicle.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-center">
-                      <div className="flex justify-center gap-1">
-                        <button 
-                          onClick={() => handleEditClick(vehicle)}
-                          className="p-1.5 rounded-lg border border-white/5 hover:border-[#F66F14]/40 hover:bg-[#F66F14]/10 text-[#CAC4DA] hover:text-[#F66F14] transition-all cursor-pointer"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(vehicle.id)}
-                          className="p-1.5 rounded-lg border border-white/5 hover:border-rose-500/40 hover:bg-rose-500/10 text-[#CAC4DA] hover:text-rose-400 transition-all cursor-pointer"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+                    {role === 'Fleet Manager' && (
+                      <td className="px-4 py-3.5 text-center">
+                        <div className="flex justify-center gap-1">
+                          <button 
+                            onClick={() => handleEditClick(vehicle)}
+                            className="p-1.5 rounded-lg border border-white/5 hover:border-[#F66F14]/40 hover:bg-[#F66F14]/10 text-[#CAC4DA] hover:text-[#F66F14] transition-all cursor-pointer"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(vehicle.id)}
+                            className="p-1.5 rounded-lg border border-white/5 hover:border-rose-500/40 hover:bg-rose-500/10 text-[#CAC4DA] hover:text-rose-400 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
                 {vehicles.length === 0 && (

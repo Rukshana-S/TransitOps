@@ -21,6 +21,7 @@ app.use(cors({
 // Express parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use('/uploads/reports', express.static('uploads/reports'));
 
 // HTTP logger
 app.use(morgan('dev'));

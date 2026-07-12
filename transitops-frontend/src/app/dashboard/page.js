@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Bus, Users, Fuel, Wallet, Wrench, Navigation, AlertTriangle, 
   TrendingUp, Compass, CloudSun, Calendar, Plus, FileText, ArrowRight,
@@ -21,6 +22,7 @@ import { useAuth } from '@/context/AuthContext';
 const COLORS = ['#F66F14', '#38bdf8', '#facc15', '#f43f5e', '#a78bfa', '#10b981'];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { isReady, isAuthenticated } = useAuth();
   const [currentDate, setCurrentDate] = useState('');
   const [mapDetails, setMapDetails] = useState({ activeId: 'TR-102', speed: 64, cargo: 'Medical Supplies' });
@@ -235,10 +237,10 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={() => handleAction('Generate Report')}>
+          <Button variant="secondary" onClick={() => router.push('/dashboard/reports')}>
             <FileText className="mr-2 h-4 w-4" /> Reports
           </Button>
-          <Button onClick={() => handleAction('Quick Dispatch')}>
+          <Button onClick={() => router.push('/dashboard/trips')}>
             <Plus className="mr-2 h-4 w-4" /> Schedule Trip
           </Button>
         </div>
@@ -370,7 +372,7 @@ export default function DashboardPage() {
                 <h3 className="text-base font-bold text-white">Live Dispatches</h3>
                 <p className="text-xs text-[#CAC4DA]">Live operational routes tracker</p>
               </div>
-              <Button variant="secondary" className="px-3 py-1.5 text-xs rounded-xl" onClick={() => handleAction('Dispatch Panel')}>
+              <Button variant="secondary" className="px-3 py-1.5 text-xs rounded-xl" onClick={() => router.push('/dashboard/trips')}>
                 Dispatch Room <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
               </Button>
             </div>

@@ -12,7 +12,8 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 
 export default function MaintenancePage() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated, role } = useAuth();
+  const isAllowed = ['Fleet Manager', 'Safety Officer'].includes(role);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -114,11 +115,13 @@ export default function MaintenancePage() {
           <h2 className="mt-1 text-3xl font-semibold text-white">Maintenance Control</h2>
           <p className="mt-2 text-sm text-[#CAC4DA]">Schedule diagnostic inspections, record mechanic logs, and monitor overhaul progress.</p>
         </div>
-        <div>
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Schedule Service
-          </Button>
-        </div>
+        {isAllowed && (
+          <div>
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Schedule Service
+            </Button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -167,7 +170,10 @@ export default function MaintenancePage() {
 
                   {/* Service Control buttons */}
                   <div className="flex justify-end gap-2 pt-2 border-t border-white/5">
-                    {svc.status !== 'Completed' && (
+                    {!isAllowed && (
+                      <span className="text-[10px] text-[#CAC4DA] italic">Read-only view</span>
+                    )}
+                    {isAllowed && svc.status !== 'Completed' && (
                       <>
                         <button 
                           onClick={() => handleUpdateProgress(svc.id, -10)} 
@@ -189,7 +195,7 @@ export default function MaintenancePage() {
                         </button>
                       </>
                     )}
-                    {svc.status === 'Completed' && (
+                    {isAllowed && svc.status === 'Completed' && (
                       <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
                         <Check className="h-3.5 w-3.5" /> Sign-off Completed
                       </span>

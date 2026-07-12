@@ -8,6 +8,8 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis
 import { Download, Plus, DollarSign, Wrench, Shield, Users, MapPin, Tag, ArrowUpRight, ArrowDownRight, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
+import { reportService } from '@/services/reportService';
+import ExportModal from '@/components/ui/ExportModal';
 
 const COLORS = ['#F66F14', '#facc15', '#38bdf8', '#a78bfa', '#f43f5e', '#10b981'];
 
@@ -21,7 +23,8 @@ const monthlyTrend = [
 ];
 
 export default function ExpensesPage() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated, role } = useAuth();
+  const isAllowed = ['Fleet Manager', 'Financial Analyst'].includes(role);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -80,8 +83,9 @@ export default function ExpensesPage() {
     }
   };
 
+  const [showExportModal, setShowExportModal] = useState(false);
   const handleExport = () => {
-    toast.success('Preparing expense sheets. Check your downloads.');
+    setShowExportModal(true);
   };
 
   // Dynamically group categories for allocation pie chart
@@ -126,9 +130,11 @@ export default function ExpensesPage() {
           <Button variant="secondary" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" /> Export Report
           </Button>
-          <Button onClick={() => setShowModal(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Expense
-          </Button>
+          {isAllowed && (
+            <Button onClick={() => setShowModal(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add Expense
+            </Button>
+          )}
         </div>
       </div>
 
@@ -412,6 +418,21 @@ export default function ExpensesPage() {
           </GlassCard>
         </div>
       )}
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="Export Expenses Log"
+        onExport={async (format) => {
+          try {
+            const report = await reportService.compileReport('Expense', format, 'Expense Operations Audit');
+            toast.success('Report compiled successfully! Download starting.');
+            window.open(report.file_url, '_blank');
+          } catch (err) {
+            toast.error('Failed to export expenses report');
+          }
+        }}
+      />
     </div>
   );
 }

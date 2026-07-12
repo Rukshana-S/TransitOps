@@ -25,7 +25,8 @@ const columnStyles = {
 };
 
 export default function TripsPage() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated, role } = useAuth();
+  const isAllowed = ['Fleet Manager', 'Dispatcher'].includes(role);
   const [trips, setTrips] = useState([]);
   const [availableVehicles, setAvailableVehicles] = useState([]);
   const [availableDrivers, setAvailableDrivers] = useState([]);
@@ -172,11 +173,13 @@ export default function TripsPage() {
           <h2 className="mt-1 text-3xl font-semibold text-white">Trip Dispatcher</h2>
           <p className="mt-2 text-sm text-[#CAC4DA]">Organize dispatches across active columns, check ETA states, and track route drivers.</p>
         </div>
-        <div>
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Schedule Trip
-          </Button>
-        </div>
+        {isAllowed && (
+          <div>
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Schedule Trip
+            </Button>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -215,12 +218,14 @@ export default function TripsPage() {
                         <span className="text-[10px] font-mono text-[#F66F14] font-bold">{trip.id}</span>
                         <div className="flex items-center gap-1.5 text-[10px] text-[#CAC4DA]">
                           <Clock className="h-3 w-3" /> {trip.eta}
-                          <button 
-                            onClick={() => handleDeleteTrip(trip.id)}
-                            className="text-rose-400 hover:text-rose-300 p-0.5 rounded hover:bg-white/5 cursor-pointer"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                          {isAllowed && (
+                            <button 
+                              onClick={() => handleDeleteTrip(trip.id)}
+                              className="text-rose-400 hover:text-rose-300 p-0.5 rounded hover:bg-white/5 cursor-pointer"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       </div>
 
@@ -254,7 +259,10 @@ export default function TripsPage() {
 
                       {/* Column transition actions */}
                       <div className="mt-4 flex flex-wrap gap-1 border-t border-white/5 pt-3">
-                        {colName === 'Pending' && (
+                        {!isAllowed && (
+                          <span className="text-[9px] text-[#CAC4DA] text-center w-full block bg-white/5 py-1 rounded">Read-only</span>
+                        )}
+                        {isAllowed && colName === 'Pending' && (
                           <button 
                             onClick={() => handleStatusChange(trip.id, 'Assigned')}
                             className="w-full text-center px-2 py-1.5 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 text-[10px] font-bold uppercase transition hover:bg-sky-500/20 cursor-pointer"
@@ -262,7 +270,7 @@ export default function TripsPage() {
                             Assign Driver
                           </button>
                         )}
-                        {colName === 'Assigned' && (
+                        {isAllowed && colName === 'Assigned' && (
                           <button 
                             onClick={() => handleStatusChange(trip.id, 'In Progress')}
                             className="w-full text-center px-2 py-1.5 rounded-lg bg-[#F66F14]/10 border border-[#F66F14]/20 text-[#F66F14] text-[10px] font-bold uppercase transition hover:bg-[#F66F14]/20 cursor-pointer"
@@ -270,7 +278,7 @@ export default function TripsPage() {
                             Start Route
                           </button>
                         )}
-                        {colName === 'In Progress' && (
+                        {isAllowed && colName === 'In Progress' && (
                           <div className="grid grid-cols-2 gap-1 w-full">
                             <button 
                               onClick={() => handleStatusChange(trip.id, 'Completed')}
@@ -286,7 +294,7 @@ export default function TripsPage() {
                             </button>
                           </div>
                         )}
-                        {(colName === 'Completed' || colName === 'Cancelled') && (
+                        {isAllowed && (colName === 'Completed' || colName === 'Cancelled') && (
                           <span className="text-[9px] text-[#CAC4DA] text-center w-full block bg-white/5 py-1 rounded">Archived log</span>
                         )}
                       </div>

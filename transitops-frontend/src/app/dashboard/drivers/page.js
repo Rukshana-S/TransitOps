@@ -12,7 +12,8 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 
 export default function DriversPage() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated, role } = useAuth();
+  const isAllowed = ['Fleet Manager', 'Safety Officer'].includes(role);
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -167,11 +168,13 @@ export default function DriversPage() {
           <h2 className="mt-1 text-3xl font-semibold text-white">Driver Registry</h2>
           <p className="mt-2 text-sm text-[#CAC4DA]">Manage operator profiles, safety compliance, and live shift states.</p>
         </div>
-        <div>
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Add Driver
-          </Button>
-        </div>
+        {isAllowed && (
+          <div>
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Add Driver
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -274,21 +277,23 @@ export default function DriversPage() {
               {/* Bottom Actions */}
               <div className="mt-4 flex items-center justify-between text-xs">
                 <span className="text-[#CAC4DA] font-mono">{driver.phone}</span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => handleEditClick(driver)}
-                    className="text-[#F66F14] hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
-                  >
-                    <Edit3 className="h-3.5 w-3.5" /> Edit
-                  </button>
-                  <span className="text-white/20">|</span>
-                  <button 
-                    onClick={() => handleDelete(driver.id)}
-                    className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
-                  >
-                    Offboard
-                  </button>
-                </div>
+                {isAllowed && (
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => handleEditClick(driver)}
+                      className="text-[#F66F14] hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" /> Edit
+                    </button>
+                    <span className="text-white/20">|</span>
+                    <button 
+                      onClick={() => handleDelete(driver.id)}
+                      className="text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                    >
+                      Offboard
+                    </button>
+                  </div>
+                )}
               </div>
             </GlassCard>
           ))}

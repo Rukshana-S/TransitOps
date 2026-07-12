@@ -75,6 +75,7 @@ export async function initDatabase() {
       }
     } else {
       console.log('✅ Database already initialized and schema is valid.');
+      await pool.query('ALTER TABLE reports ADD COLUMN IF NOT EXISTS file_url VARCHAR(255) DEFAULT NULL;');
     }
   } catch (error) {
     console.error('❌ Database Initialization Failed:', error.message);

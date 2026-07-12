@@ -114,7 +114,8 @@ CREATE TABLE reports (
     date DATE NOT NULL,
     author VARCHAR(100) NOT NULL,
     size VARCHAR(50) NOT NULL,
-    type VARCHAR(50) NOT NULL
+    type VARCHAR(50) NOT NULL,
+    file_url VARCHAR(255) DEFAULT NULL
 );
 
 -- 10. Notifications Table

@@ -29,8 +29,12 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const storedToken = typeof window !== 'undefined' ? window.localStorage.getItem('transitops_token') : null;
-    const storedUser = typeof window !== 'undefined' ? window.localStorage.getItem('transitops_user') : null;
+    const storedToken = typeof window !== 'undefined' 
+      ? (window.localStorage.getItem('token') || window.localStorage.getItem('transitops_token')) 
+      : null;
+    const storedUser = typeof window !== 'undefined' 
+      ? (window.localStorage.getItem('user') || window.localStorage.getItem('transitops_user')) 
+      : null;
 
     if (storedToken) {
       setToken(storedToken);
@@ -49,6 +53,8 @@ export function AuthProvider({ children }) {
     setUser(nextUser);
     
     if (typeof window !== 'undefined') {
+      window.localStorage.setItem('token', nextToken);
+      window.localStorage.setItem('user', JSON.stringify(nextUser));
       window.localStorage.setItem('transitops_token', nextToken);
       window.localStorage.setItem('transitops_user', JSON.stringify(nextUser));
     }
@@ -64,6 +70,8 @@ export function AuthProvider({ children }) {
     setToken(null);
     setUser(null);
     if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('token');
+      window.localStorage.removeItem('user');
       window.localStorage.removeItem('transitops_token');
       window.localStorage.removeItem('transitops_user');
     }

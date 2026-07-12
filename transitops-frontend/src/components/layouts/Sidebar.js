@@ -2,14 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Bus, CarFront, Fuel, LayoutGrid, LifeBuoy, LogOut, Settings, ShieldCheck, Truck, Wallet, Wrench } from 'lucide-react';
+import { BarChart3, Bus, CarFront, Fuel, LayoutGrid, LifeBuoy, LogOut, Settings, ShieldCheck, Truck, Wallet, Wrench, UserCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 const items = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
   { href: '/dashboard/vehicles', label: 'Vehicles', icon: Bus },
   { href: '/dashboard/drivers', label: 'Drivers', icon: ShieldCheck },
-  { href: '/dashboard/assignments', label: 'Vehicle Assignment', icon: CarFront },
   { href: '/dashboard/trips', label: 'Trip Dispatcher', icon: Truck },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
   { href: '/dashboard/fuel', label: 'Fuel', icon: Fuel },
@@ -17,6 +16,7 @@ const items = [
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/profile', label: 'My Profile', icon: UserCircle },
 ];
 
 export default function Sidebar({ collapsed, onCollapse }) {

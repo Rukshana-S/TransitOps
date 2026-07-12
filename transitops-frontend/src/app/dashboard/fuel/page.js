@@ -11,6 +11,8 @@ import {
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
+import { reportService } from '@/services/reportService';
+import ExportModal from '@/components/ui/ExportModal';
 
 const fuelTrendData = [
   { month: 'Jan', consumption: 2100, cost: 189 },
@@ -22,7 +24,8 @@ const fuelTrendData = [
 ];
 
 export default function FuelPage() {
-  const { isReady, isAuthenticated } = useAuth();
+  const { isReady, isAuthenticated, role } = useAuth();
+  const isAllowed = ['Fleet Manager', 'Financial Analyst'].includes(role);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -87,8 +90,9 @@ export default function FuelPage() {
     }
   };
 
+  const [showExportModal, setShowExportModal] = useState(false);
   const handleExport = () => {
-    toast.success('Preparing fuel expense sheet downloads.');
+    setShowExportModal(true);
   };
 
   // Calculate dynamic summaries
@@ -111,9 +115,11 @@ export default function FuelPage() {
           <Button variant="secondary" onClick={handleExport}>
             <Download className="mr-2 h-4 w-4" /> Download Logs
           </Button>
-          <Button onClick={() => setShowAddModal(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Log Refuel
-          </Button>
+          {isAllowed && (
+            <Button onClick={() => setShowAddModal(true)}>
+              <Plus className="mr-2 h-4 w-4" /> Log Refuel
+            </Button>
+          )}
         </div>
       </div>
 
@@ -365,6 +371,21 @@ export default function FuelPage() {
           </GlassCard>
         </div>
       )}
+
+      <ExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        title="Export Fuel Logs"
+        onExport={async (format) => {
+          try {
+            const report = await reportService.compileReport('Fuel', format, 'Fuel Fleet Consumption Logs');
+            toast.success('Report compiled successfully! Download starting.');
+            window.open(report.file_url, '_blank');
+          } catch (err) {
+            toast.error('Failed to export fuel report');
+          }
+        }}
+      />
     </div>
   );
 }

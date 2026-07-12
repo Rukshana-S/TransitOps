@@ -10,18 +10,26 @@
     "prisma:generate": "npx prisma generate",
     "prisma:studio": "npx prisma studio"
   },
-  "keywords": ["fleet-management", "transport", "logistics"],
+  "keywords": [
+    "fleet-management",
+    "transport",
+    "logistics"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
     "@prisma/client": "^7.8.0",
+    "archiver": "^8.0.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
+    "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.11.0",
+    "pdfkit": "^0.19.1",
     "pg": "^8.22.0",
     "prisma": "^7.8.0",
     "zod": "^4.4.3"
