@@ -18,7 +18,14 @@ const poolConfig = connectionString
       database: process.env.DB_DATABASE || 'transitops',
     };
 
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+
 const pool = new Pool(poolConfig);
+const adapter = new PrismaPg(pool);
+
+// Initialize Prisma
+export const prisma = new PrismaClient({ adapter });
 
 // Test database connection on load
 pool.query('SELECT NOW()', (err, res) => {

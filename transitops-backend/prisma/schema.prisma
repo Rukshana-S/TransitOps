@@ -1,13 +1,133 @@
-// ─────────────────────────────────────────────────────────
-// TransitOps — Prisma Schema (placeholder)
-// The full data model will be implemented in Phase 1.
-// ─────────────────────────────────────────────────────────
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int      @id @default(autoincrement())
+  full_name   String   @db.VarChar(100)
+  email       String   @unique @db.VarChar(100)
+  phone       String?  @db.VarChar(15)
+  employee_id String?  @db.VarChar(20)
+  department  String?  @db.VarChar(50)
+  role        String   @db.VarChar(30)
+  password    String
+  created_at  DateTime @default(now())
+
+  @@map("users")
+}
+
+model Vehicle {
+  id                 String  @id @db.VarChar(50)
+  reg_number         String  @unique @db.VarChar(50)
+  type               String  @db.VarChar(50)
+  manufacturer       String? @db.VarChar(100)
+  model              String  @db.VarChar(100)
+  manufacturing_year Int?
+  fuel_type          String? @db.VarChar(50)
+  mileage            String? @default("0 km") @db.VarChar(50)
+  fuel               String? @default("100%") @db.VarChar(50)
+  capacity           Int?
+  status             String? @default("available") @db.VarChar(50)
+  current_location   String? @db.VarChar(255)
+  notes              String?
+  assigned_driver_id String? @db.VarChar(50)
+  
+  driver             Driver? @relation("VehicleDriver", fields: [assigned_driver_id], references: [id])
+
+  @@map("vehicles")
+}
+
+model Driver {
+  id                  String    @id @db.VarChar(50)
+  name                String    @db.VarChar(100)
+  employee_id         String?   @unique @db.VarChar(20)
+  license             String    @unique @db.VarChar(100)
+  license_expiry      DateTime? @db.Date
+  phone               String?   @db.VarChar(50)
+  email               String?   @db.VarChar(100)
+  joining_date        DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  status              String?   @default("Available") @db.VarChar(50)
+  safety_score        Int?      @default(90)
+  assigned_vehicle_id String?   @db.VarChar(50)
+
+  vehicles            Vehicle[] @relation("VehicleDriver")
+
+  @@map("drivers")
+}
+
+model Trip {
+  id          String  @id @db.VarChar(50)
+  vehicle     String  @db.VarChar(100)
+  driver      String  @db.VarChar(100)
+  cargo       String? @default("General Freight") @db.VarChar(255)
+  pickup      String  @db.VarChar(255)
+  destination String  @db.VarChar(255)
+  distance    String  @db.VarChar(50)
+  eta         String  @db.VarChar(50)
+  status      String? @default("Pending") @db.VarChar(50)
+
+  @@map("trips")
+}
+
+model Maintenance {
+  id       String  @id @db.VarChar(50)
+  type     String  @db.VarChar(100)
+  asset    String  @db.VarChar(100)
+  date     DateTime @db.Date
+  cost     String  @db.VarChar(50)
+  progress Int?    @default(0)
+  status   String? @default("Scheduled") @db.VarChar(50)
+
+  @@map("maintenance")
+}
+
+model FuelLog {
+  id      String   @id @db.VarChar(50)
+  asset   String   @db.VarChar(100)
+  liters  Float
+  cost    String   @db.VarChar(50)
+  date    DateTime @db.Date
+  station String?  @default("HP Refuel Station") @db.VarChar(100)
+  status  String?  @default("Pending") @db.VarChar(50)
+
+  @@map("fuel_logs")
+}
+
+model Expense {
+  id          String   @id @db.VarChar(50)
+  category    String   @db.VarChar(100)
+  vehicle     String   @db.VarChar(100)
+  description String
+  amount      Float
+  date        DateTime @db.Date
+  status      String?  @default("Pending") @db.VarChar(50)
+
+  @@map("expenses")
+}
+
+model Report {
+  id       String  @id @db.VarChar(50)
+  title    String  @db.VarChar(255)
+  category String  @db.VarChar(100)
+  date     DateTime @db.Date
+  author   String  @db.VarChar(100)
+  size     String  @db.VarChar(50)
+  type     String  @db.VarChar(50)
+  file_url String? @db.VarChar(255)
+
+  @@map("reports")
+}
+
+model Notification {
+  id      Int      @id @default(autoincrement())
+  title   String   @db.VarChar(255)
+  message String
+  date    DateTime? @default(now())
+  read    Boolean?  @default(false)
+
+  @@map("notifications")
 }

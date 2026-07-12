@@ -1,25 +1,26 @@
-import pool from '../config/db.js';
+import { prisma } from '../config/db.js';
 
 export const getOverview = async (req, res, next) => {
   try {
     // 1. Fetch counts for KPIs
-    const vehiclesCountRes = await pool.query('SELECT COUNT(*) FROM vehicles');
-    const availableCountRes = await pool.query("SELECT COUNT(*) FROM vehicles WHERE status = 'available'");
-    const onTripCountRes = await pool.query("SELECT COUNT(*) FROM vehicles WHERE status = 'on trip'");
-    const maintenanceCountRes = await pool.query("SELECT COUNT(*) FROM vehicles WHERE status = 'maintenance'");
+    const vehiclesCountRes = await prisma.vehicle.count();
+    const availableCountRes = await prisma.vehicle.count({ where: { status: { equals: 'available', mode: 'insensitive' } } });
+    const onTripCountRes = await prisma.vehicle.count({ where: { status: { equals: 'on trip', mode: 'insensitive' } } });
+    const maintenanceCountRes = await prisma.vehicle.count({ where: { status: { equals: 'maintenance', mode: 'insensitive' } } });
     
-    const driversCountRes = await pool.query('SELECT COUNT(*) FROM drivers');
+    const driversCountRes = await prisma.driver.count();
     
-    const fuelSumRes = await pool.query('SELECT SUM(liters) FROM fuel_logs');
-    const expenseSumRes = await pool.query('SELECT SUM(amount) FROM expenses');
+    // For fuel and expenses, we need to sum
+    const fuelSumAgg = await prisma.fuelLog.aggregate({ _sum: { liters: true } });
+    const expenseSumAgg = await prisma.expense.aggregate({ _sum: { amount: true } });
 
-    const totalVehicles = parseInt(vehiclesCountRes.rows[0].count) || 0;
-    const availableVehicles = parseInt(availableCountRes.rows[0].count) || 0;
-    const onTripVehicles = parseInt(onTripCountRes.rows[0].count) || 0;
-    const maintenanceVehicles = parseInt(maintenanceCountRes.rows[0].count) || 0;
-    const totalDrivers = parseInt(driversCountRes.rows[0].count) || 0;
-    const totalFuelUsed = parseFloat(fuelSumRes.rows[0].sum) || 0;
-    const totalExpense = parseFloat(expenseSumRes.rows[0].sum) || 0;
+    const totalVehicles = vehiclesCountRes || 0;
+    const availableVehicles = availableCountRes || 0;
+    const onTripVehicles = onTripCountRes || 0;
+    const maintenanceVehicles = maintenanceCountRes || 0;
+    const totalDrivers = driversCountRes || 0;
+    const totalFuelUsed = fuelSumAgg._sum.liters || 0;
+    const totalExpense = expenseSumAgg._sum.amount || 0;
 
     // Calculate Fleet Utilization dynamically
     const fleetUtilization = totalVehicles > 0 
@@ -38,7 +39,7 @@ export const getOverview = async (req, res, next) => {
       { id: 8, title: 'Fleet Utilization', value: `${fleetUtilization}%`, detail: 'Avg Target 90%', trend: '+2%', icon: 'Chart' }
     ];
 
-    // 2. Mock or fetch chart trends (since we seed static records, we return structured values)
+    // 2. Mock or fetch chart trends
     const utilization = [
       { name: '08:00', utilization: 72 },
       { name: '10:00', utilization: 86 },
@@ -70,17 +71,20 @@ export const getOverview = async (req, res, next) => {
     ];
 
     // Fetch trip statuses dynamically
-    const tripStatusRes = await pool.query('SELECT status, COUNT(*) FROM trips GROUP BY status');
-    const totalTripsRes = await pool.query('SELECT COUNT(*) FROM trips');
-    const totalTrips = parseInt(totalTripsRes.rows[0].count) || 1;
-    const tripStatus = tripStatusRes.rows.map(row => ({
-      name: row.status,
-      value: Math.round((parseInt(row.count) / totalTrips) * 100)
+    const tripStatusGroups = await prisma.trip.groupBy({
+      by: ['status'],
+      _count: { status: true }
+    });
+    
+    const totalTrips = await prisma.trip.count() || 1;
+    const tripStatus = tripStatusGroups.map(group => ({
+      name: group.status || 'Unknown',
+      value: Math.round((group._count.status / totalTrips) * 100)
     }));
 
     // Fetch driver safety scores dynamically
-    const driverPerformanceRes = await pool.query('SELECT AVG(safety_score) as avg_score FROM drivers');
-    const avgSafety = Math.round(parseFloat(driverPerformanceRes.rows[0].avg_score)) || 90;
+    const driverPerformanceAgg = await prisma.driver.aggregate({ _avg: { safety_score: true } });
+    const avgSafety = Math.round(driverPerformanceAgg._avg.safety_score) || 90;
     const driverPerformance = [
       { subject: 'Safety', value: avgSafety },
       { subject: 'Punctuality', value: 88 },
@@ -106,20 +110,35 @@ export const getOverview = async (req, res, next) => {
     ];
 
     // Fetch recent trips table (Limit 3)
-    const tripsTableRes = await pool.query('SELECT id, driver, vehicle, pickup as source, destination, distance, status, eta as date FROM trips LIMIT 3');
-    const tripsTable = tripsTableRes.rows;
+    const tripsTableData = await prisma.trip.findMany({
+      take: 3,
+      orderBy: { id: 'desc' },
+      select: { id: true, driver: true, vehicle: true, pickup: true, destination: true, distance: true, status: true, eta: true }
+    });
+    const tripsTable = tripsTableData.map(t => ({ ...t, source: t.pickup, date: t.eta }));
 
     // Fetch top drivers
-    const topDriversRes = await pool.query("SELECT name, safety_score as safety, status as availability, phone as expiry, 'MA' as image FROM drivers LIMIT 3");
-    const drivers = topDriversRes.rows.map(d => ({
-      ...d,
+    const topDriversData = await prisma.driver.findMany({
+      take: 3,
+      orderBy: { safety_score: 'desc' },
+      select: { name: true, safety_score: true, status: true, phone: true }
+    });
+    const drivers = topDriversData.map(d => ({
+      name: d.name,
+      safety: d.safety_score,
+      availability: d.status,
       expiry: 'Active',
-      image: d.name.split(' ').map(n=>n[0]).join('').toUpperCase()
+      image: d.name.split(' ').map(n => n[0]).join('').toUpperCase()
     }));
 
     // Fetch notifications
-    const notifRes = await pool.query('SELECT title, message FROM notifications WHERE read = false ORDER BY date DESC LIMIT 3');
-    const notifications = notifRes.rows;
+    const notifData = await prisma.notification.findMany({
+      where: { read: false },
+      orderBy: { date: 'desc' },
+      take: 3,
+      select: { title: true, message: true }
+    });
+    const notifications = notifData;
 
     return res.status(200).json({
       kpis,

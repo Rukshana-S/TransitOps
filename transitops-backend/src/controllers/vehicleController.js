@@ -1,38 +1,34 @@
-import pool from '../config/db.js';
+import { prisma } from '../config/db.js';
 
 export const getVehicles = async (req, res, next) => {
   const { search, status } = req.query;
   try {
-    let query = `
-      SELECT v.*, d.name as driver 
-      FROM vehicles v
-      LEFT JOIN drivers d ON v.assigned_driver_id = d.id
-    `;
-    const params = [];
-    const conditions = [];
-
+    const where = {};
     if (search) {
-      params.push(`%${search}%`);
-      conditions.push(`(v.id ILIKE $${params.length} OR v.model ILIKE $${params.length} OR v.reg_number ILIKE $${params.length} OR d.name ILIKE $${params.length})`);
+      where.OR = [
+        { id: { contains: search, mode: 'insensitive' } },
+        { model: { contains: search, mode: 'insensitive' } },
+        { reg_number: { contains: search, mode: 'insensitive' } },
+        { driver: { name: { contains: search, mode: 'insensitive' } } }
+      ];
     }
-
     if (status && status !== 'all') {
-      params.push(status);
-      conditions.push(`v.status = $${params.length}`);
+      where.status = status;
     }
 
-    if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
-    }
+    const vehicles = await prisma.vehicle.findMany({
+      where,
+      include: {
+        driver: {
+          select: { name: true }
+        }
+      },
+      orderBy: { id: 'desc' }
+    });
 
-    query += ' ORDER BY v.id DESC';
-
-    const result = await pool.query(query, params);
-    
-    // Format driver name display (e.g. 'Not Assigned' if null)
-    const formatted = result.rows.map(row => ({
-      ...row,
-      driver: row.driver || 'Not Assigned'
+    const formatted = vehicles.map(v => ({
+      ...v,
+      driver: v.driver?.name || 'Not Assigned'
     }));
 
     return res.status(200).json(formatted);
@@ -44,21 +40,19 @@ export const getVehicles = async (req, res, next) => {
 export const getVehicleById = async (req, res, next) => {
   const { id } = req.params;
   try {
-    const result = await pool.query(`
-      SELECT v.*, d.name as driver 
-      FROM vehicles v
-      LEFT JOIN drivers d ON v.assigned_driver_id = d.id
-      WHERE v.id = $1
-    `, [id]);
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id },
+      include: { driver: { select: { name: true } } }
+    });
 
-    if (result.rows.length === 0) {
+    if (!vehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
 
-    const vehicle = result.rows[0];
-    vehicle.driver = vehicle.driver || 'Not Assigned';
-
-    return res.status(200).json(vehicle);
+    return res.status(200).json({
+      ...vehicle,
+      driver: vehicle.driver?.name || 'Not Assigned'
+    });
   } catch (error) {
     next(error);
   }
@@ -76,33 +70,38 @@ export const createVehicle = async (req, res, next) => {
   }
 
   try {
-    const existCheck = await pool.query('SELECT * FROM vehicles WHERE id = $1 OR reg_number = $2', [id, regNumber]);
-    if (existCheck.rows.length > 0) {
+    const existCheck = await prisma.vehicle.findFirst({
+      where: {
+        OR: [
+          { id },
+          { reg_number: regNumber }
+        ]
+      }
+    });
+
+    if (existCheck) {
       return res.status(400).json({ message: 'Vehicle ID or registration number already registered' });
     }
 
-    const query = `
-      INSERT INTO vehicles (
-        id, reg_number, type, manufacturer, model, 
-        manufacturing_year, fuel_type, mileage, fuel, 
-        capacity, status, current_location, notes, assigned_driver_id
-      ) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NULL) 
-      RETURNING *`;
-    
-    const params = [
-      id, regNumber, type, manufacturer || null, model, 
-      manufacturingYear ? parseInt(manufacturingYear) : null, 
-      fuelType || null, mileage || '0 km', fuel || '100%', 
-      capacity ? parseInt(capacity) : null, status || 'available', 
-      currentLocation || null, notes || null
-    ];
+    const created = await prisma.vehicle.create({
+      data: {
+        id,
+        reg_number: regNumber,
+        type,
+        manufacturer: manufacturer || null,
+        model,
+        manufacturing_year: manufacturingYear ? parseInt(manufacturingYear) : null,
+        fuel_type: fuelType || null,
+        mileage: mileage || '0 km',
+        fuel: fuel || '100%',
+        capacity: capacity ? parseInt(capacity) : null,
+        status: status || 'available',
+        current_location: currentLocation || null,
+        notes: notes || null,
+      }
+    });
 
-    const result = await pool.query(query, params);
-    const created = result.rows[0];
-    created.driver = 'Not Assigned';
-
-    return res.status(201).json(created);
+    return res.status(201).json({ ...created, driver: 'Not Assigned' });
   } catch (error) {
     next(error);
   }
@@ -117,50 +116,34 @@ export const updateVehicle = async (req, res, next) => {
   } = req.body;
 
   try {
-    const existCheck = await pool.query('SELECT * FROM vehicles WHERE id = $1', [id]);
-    if (existCheck.rows.length === 0) {
+    const existCheck = await prisma.vehicle.findUnique({ where: { id } });
+    if (!existCheck) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
 
-    const query = `
-      UPDATE vehicles 
-      SET reg_number = COALESCE($1, reg_number),
-          type = COALESCE($2, type),
-          manufacturer = COALESCE($3, manufacturer),
-          model = COALESCE($4, model),
-          manufacturing_year = COALESCE($5, manufacturing_year),
-          fuel_type = COALESCE($6, fuel_type),
-          mileage = COALESCE($7, mileage),
-          fuel = COALESCE($8, fuel),
-          capacity = COALESCE($9, capacity),
-          status = COALESCE($10, status),
-          current_location = COALESCE($11, current_location),
-          notes = COALESCE($12, notes)
-      WHERE id = $13 
-      RETURNING *`;
-    
-    const params = [
-      reg_number, type, manufacturer, model, 
-      manufacturing_year ? parseInt(manufacturing_year) : null, 
-      fuel_type, mileage, fuel, 
-      capacity ? parseInt(capacity) : null, status, 
-      current_location, notes, id
-    ];
+    const updated = await prisma.vehicle.update({
+      where: { id },
+      data: {
+        reg_number: reg_number ?? existCheck.reg_number,
+        type: type ?? existCheck.type,
+        manufacturer: manufacturer ?? existCheck.manufacturer,
+        model: model ?? existCheck.model,
+        manufacturing_year: manufacturing_year ? parseInt(manufacturing_year) : existCheck.manufacturing_year,
+        fuel_type: fuel_type ?? existCheck.fuel_type,
+        mileage: mileage ?? existCheck.mileage,
+        fuel: fuel ?? existCheck.fuel,
+        capacity: capacity ? parseInt(capacity) : existCheck.capacity,
+        status: status ?? existCheck.status,
+        current_location: current_location ?? existCheck.current_location,
+        notes: notes ?? existCheck.notes,
+      },
+      include: { driver: { select: { name: true } } }
+    });
 
-    const result = await pool.query(query, params);
-
-    // Fetch joined driver details
-    const detailed = await pool.query(`
-      SELECT v.*, d.name as driver 
-      FROM vehicles v
-      LEFT JOIN drivers d ON v.assigned_driver_id = d.id
-      WHERE v.id = $1
-    `, [id]);
-
-    const updated = detailed.rows[0];
-    updated.driver = updated.driver || 'Not Assigned';
-
-    return res.status(200).json(updated);
+    return res.status(200).json({
+      ...updated,
+      driver: updated.driver?.name || 'Not Assigned'
+    });
   } catch (error) {
     next(error);
   }
@@ -169,25 +152,23 @@ export const updateVehicle = async (req, res, next) => {
 export const deleteVehicle = async (req, res, next) => {
   const { id } = req.params;
   try {
-    await pool.query('BEGIN');
-
-    const existCheck = await pool.query('SELECT assigned_driver_id FROM vehicles WHERE id = $1', [id]);
-    if (existCheck.rows.length === 0) {
-      await pool.query('ROLLBACK');
+    const vehicle = await prisma.vehicle.findUnique({ where: { id } });
+    if (!vehicle) {
       return res.status(404).json({ message: 'Vehicle not found' });
     }
 
-    const driverId = existCheck.rows[0].assigned_driver_id;
-    if (driverId) {
-      await pool.query('UPDATE drivers SET assigned_vehicle_id = NULL WHERE id = $1', [driverId]);
-    }
-
-    await pool.query('DELETE FROM vehicles WHERE id = $1', [id]);
-    await pool.query('COMMIT');
+    await prisma.$transaction(async (tx) => {
+      if (vehicle.assigned_driver_id) {
+        await tx.driver.update({
+          where: { id: vehicle.assigned_driver_id },
+          data: { assigned_vehicle_id: null }
+        });
+      }
+      await tx.vehicle.delete({ where: { id } });
+    });
 
     return res.status(200).json({ message: 'Vehicle decommissioned and deleted' });
   } catch (error) {
-    await pool.query('ROLLBACK');
     next(error);
   }
 };
