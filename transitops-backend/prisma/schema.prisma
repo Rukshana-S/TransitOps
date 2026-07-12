@@ -1,0 +1,13 @@
+// ─────────────────────────────────────────────────────────
+// TransitOps — Prisma Schema (placeholder)
+// The full data model will be implemented in Phase 1.
+// ─────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
