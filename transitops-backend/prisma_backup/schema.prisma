@@ -1,0 +1,33 @@
+// ─────────────────────────────────────────────────────────
+// TransitOps — Prisma Schema (placeholder)
+// The full data model will be implemented in Phase 1.
+// ─────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TripStatus {
+  DRAFT
+  DISPATCHED
+  COMPLETED
+  CANCELLED
+}
+
+model Trip {
+  id              String     @id @default(uuid())
+  tripCode        String     @unique
+  source          String
+  destination     String
+  vehicleId       String
+  driverId        String
+  cargoWeight     Float
+  plannedDistance Float
+  status          TripStatus @default(DRAFT)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
