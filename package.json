@@ -1,0 +1,14 @@
+{
+  "name": "transitops-workspace",
+  "version": "1.0.0",
+  "description": "TransitOps - Smart Transport Operations Platform Workspace",
+  "scripts": {
+    "install:all": "npm install --prefix transitops-backend && npm install --prefix transitops-frontend",
+    "dev:backend": "npm run dev --prefix transitops-backend",
+    "dev:frontend": "npm run dev --prefix transitops-frontend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
