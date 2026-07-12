@@ -9,7 +9,7 @@ import { driverService } from '@/services/driverService';
 import { 
   Truck, ArrowRight, Plus, MapPin, Navigation, 
   CheckCircle, AlertCircle, XCircle, ArrowUpRight,
-  Clock, Package, ShieldCheck, X, Loader2, Trash2
+  Clock, Package, ShieldCheck, X, Loader2, Trash2, Edit2
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
@@ -33,6 +33,7 @@ export default function TripsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   const [newTrip, setNewTrip] = useState({
     vehicle: '',
@@ -44,6 +45,8 @@ export default function TripsPage() {
     eta: '',
     status: 'Pending',
   });
+
+  const [editTripData, setEditTripData] = useState(null);
 
   useEffect(() => {
     if (isReady && isAuthenticated) {
@@ -136,6 +139,36 @@ export default function TripsPage() {
     }
   };
 
+  const handleEditTrip = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        vehicle: editTripData.vehicle,
+        driver: editTripData.driver,
+        cargo: editTripData.cargo,
+        pickup: editTripData.pickup,
+        destination: editTripData.destination,
+        distance: editTripData.distance,
+        eta: editTripData.eta,
+        status: editTripData.status,
+      };
+
+      const updated = await tripService.updateTrip(editTripData.id, payload);
+      setTrips(trips.map(trip => trip.id === editTripData.id ? updated : trip));
+      setShowEditModal(false);
+      setEditTripData(null);
+      toast.success('Trip successfully updated');
+      await fetchTripsAndAssets(); // refresh available assets
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update trip');
+    }
+  };
+
+  const openEditModal = (trip) => {
+    setEditTripData({ ...trip });
+    setShowEditModal(true);
+  };
+
   const handleDeleteTrip = async (id) => {
     if (!confirm(`Are you sure you want to delete trip dispatch log ${id}?`)) return;
     
@@ -219,12 +252,20 @@ export default function TripsPage() {
                         <div className="flex items-center gap-1.5 text-[10px] text-[#CAC4DA]">
                           <Clock className="h-3 w-3" /> {trip.eta}
                           {isAllowed && (
-                            <button 
-                              onClick={() => handleDeleteTrip(trip.id)}
-                              className="text-rose-400 hover:text-rose-300 p-0.5 rounded hover:bg-white/5 cursor-pointer"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
+                            <>
+                              <button 
+                                onClick={() => openEditModal(trip)}
+                                className="text-sky-400 hover:text-sky-300 p-0.5 rounded hover:bg-white/5 cursor-pointer"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteTrip(trip.id)}
+                                className="text-rose-400 hover:text-rose-300 p-0.5 rounded hover:bg-white/5 cursor-pointer"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>
@@ -447,6 +488,124 @@ export default function TripsPage() {
                 </Button>
                 <Button type="submit" className="flex-1" disabled={availableVehicles.length === 0 || availableDrivers.length === 0}>
                   Schedule Route
+                </Button>
+              </div>
+            </form>
+          </GlassCard>
+        </div>
+      )}
+
+      {/* Edit Modal */}
+      {showEditModal && editTripData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#060910]/80 backdrop-blur-md p-4">
+          <GlassCard className="w-full max-w-md p-6 border border-[rgba(247,114,24,0.25)] shadow-[0_0_50px_rgba(246,111,20,0.2)]">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xl font-bold text-white">Edit Trip {editTripData.id}</h3>
+              <button 
+                onClick={() => setShowEditModal(false)}
+                className="text-[#CAC4DA] hover:text-white border border-transparent hover:border-white/10 p-1.5 rounded-lg transition"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditTrip} className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">Vehicle</label>
+                  <input
+                    type="text"
+                    value={editTripData.vehicle}
+                    onChange={(e) => setEditTripData({ ...editTripData, vehicle: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">Driver</label>
+                  <input
+                    type="text"
+                    value={editTripData.driver}
+                    onChange={(e) => setEditTripData({ ...editTripData, driver: e.target.value })}
+                    className="w-full px-3 py-2.5 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">Cargo Manifest / Route</label>
+                <input
+                  type="text"
+                  value={editTripData.cargo}
+                  onChange={(e) => setEditTripData({ ...editTripData, cargo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">Pickup Location</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTripData.pickup}
+                    onChange={(e) => setEditTripData({ ...editTripData, pickup: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">Destination</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTripData.destination}
+                    onChange={(e) => setEditTripData({ ...editTripData, destination: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">Distance (km)</label>
+                  <input
+                    type="text"
+                    value={editTripData.distance}
+                    onChange={(e) => setEditTripData({ ...editTripData, distance: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">ETA / Schedule</label>
+                  <input
+                    type="text"
+                    value={editTripData.eta}
+                    onChange={(e) => setEditTripData({ ...editTripData, eta: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-[#CAC4DA] mb-1.5">Status</label>
+                <select
+                  value={editTripData.status}
+                  onChange={(e) => setEditTripData({ ...editTripData, status: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-[rgba(247,114,24,0.15)] bg-[#0c1017] text-white focus:outline-none focus:border-[#F66F14]/40 text-sm"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Assigned">Assigned</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button type="button" variant="secondary" className="flex-1" onClick={() => setShowEditModal(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Save Changes
                 </Button>
               </div>
             </form>

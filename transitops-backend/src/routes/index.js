@@ -10,8 +10,9 @@ import { getTrips, createTrip, updateTrip, deleteTrip } from '../controllers/tri
 import { getMaintenance, createMaintenance, updateMaintenance, deleteMaintenance } from '../controllers/maintenanceController.js';
 import { getFuelLogs, createFuelLog, updateFuelLog, deleteFuelLog } from '../controllers/fuelController.js';
 import { getExpenses, createExpense, updateExpense, deleteExpense } from '../controllers/expenseController.js';
-import { getReports, createReport, deleteReport } from '../controllers/reportController.js';
+import { getReports, createReport, deleteReport, exportAllReports } from '../controllers/reportController.js';
 import { getNotifications, createNotification, markAsRead } from '../controllers/notificationController.js';
+import { syncAnalytics, exportAnalytics } from '../controllers/analyticsController.js';
 
 const router = express.Router();
 
@@ -65,9 +66,14 @@ router.delete('/expenses/:id', protect, restrictTo('Fleet Manager', 'Financial A
 router.get('/reports', protect, getReports);
 router.post('/reports', protect, restrictTo('Fleet Manager', 'Financial Analyst'), createReport);
 router.post('/reports/compile', protect, restrictTo('Fleet Manager', 'Financial Analyst'), createReport);
+router.post('/reports/export-all', protect, restrictTo('Fleet Manager', 'Financial Analyst'), exportAllReports);
 router.delete('/reports/:id', protect, restrictTo('Fleet Manager', 'Financial Analyst'), deleteReport);
 
-// 10. Notifications routes
+// 10. Analytics routes
+router.get('/analytics/sync', protect, syncAnalytics);
+router.get('/analytics/export', protect, exportAnalytics);
+
+// 11. Notifications routes
 router.get('/notifications', protect, getNotifications);
 router.post('/notifications', protect, createNotification);
 router.put('/notifications/:id/read', protect, markAsRead);

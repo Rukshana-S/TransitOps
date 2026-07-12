@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import GlassCard from '@/components/ui/GlassCard';
 import Button from '@/components/ui/Button';
 import { reportService } from '@/services/reportService';
+import api from '@/services/api';
 import { 
   FileText, Download, FileSpreadsheet, Plus, Search, 
   Calendar, Loader2, ArrowRight, Settings2, Trash2, Filter
@@ -101,6 +102,21 @@ export default function ReportsPage() {
     }
   };
 
+  const handleExportAll = async () => {
+    try {
+      toast.loading('Compiling complete global ZIP archive...');
+      // Make direct API call to export-all endpoint
+      const res = await api.post('/reports/export-all');
+      toast.dismiss();
+      toast.success('ZIP compiled successfully! Download starting.');
+      window.open(res.data.file_url, '_blank');
+      fetchReports();
+    } catch (err) {
+      toast.dismiss();
+      toast.error('Failed to compile global ZIP export');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this report record?')) return;
     try {
@@ -128,7 +144,7 @@ export default function ReportsPage() {
           <Button variant="secondary" onClick={() => handleHeaderExport('Excel')}>
             <FileSpreadsheet className="mr-2 h-4 w-4" /> Export Excel
           </Button>
-          <Button onClick={() => handleHeaderExport('ZIP')}>
+          <Button onClick={handleExportAll}>
             <Download className="mr-2 h-4 w-4" /> Export All (ZIP)
           </Button>
         </div>

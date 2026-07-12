@@ -12,6 +12,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend 
 } from 'recharts';
 import toast from 'react-hot-toast';
+import api from '@/services/api';
 
 const weekData = [
   { day: 'Mon', active: 85, maintenance: 15, idle: 12 },
@@ -33,9 +34,50 @@ const efficiencyData = [
 
 export default function AnalyticsPage() {
   const [timeframe, setTimeframe] = useState('Weekly');
+  const [stats, setStats] = useState({
+    fleet: { active: 17, maintenance: 3 },
+    costs: { fuel: 12400, expenses: 0, total: 12400 },
+    operations: { completedTrips: 45, totalTrips: 50, activeDrivers: 18 }
+  });
 
-  const handleExport = () => {
-    toast.success('Compiling CSV logs. Download will begin shortly.');
+  useEffect(() => {
+    handleSync(true); // pass true for silent sync on mount
+  }, []);
+
+  const handleExport = async (type) => {
+    try {
+      toast.loading(`Compiling ${type.toUpperCase()} analytics report...`);
+      const res = await api.get(`/analytics/export?type=${type}`);
+      toast.dismiss();
+      toast.success('Report successfully compiled and ready for download.');
+      if (res.data.fileUrl || res.data.file_url) {
+        window.open(res.data.fileUrl || res.data.file_url, '_blank');
+      } else if (type === 'json') {
+        const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      }
+    } catch (err) {
+      toast.dismiss();
+      toast.error(`Failed to export ${type} analytics`);
+    }
+  };
+
+  const handleSync = async (silent = false) => {
+    try {
+      if (!silent) toast.loading('Synchronizing analytics with PostgreSQL...');
+      const res = await api.get('/analytics/sync');
+      setStats(res.data);
+      if (!silent) {
+        toast.dismiss();
+        toast.success('Analytics synchronized successfully');
+      }
+    } catch (err) {
+      if (!silent) {
+        toast.dismiss();
+        toast.error('Failed to sync analytics');
+      }
+    }
   };
 
   return (
@@ -48,10 +90,13 @@ export default function AnalyticsPage() {
           <p className="mt-2 text-sm text-[#CAC4DA]">Analyze dispatcher logs, compare route performance patterns, and check vehicle uptime.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" onClick={handleExport}>
-            <Download className="mr-2 h-4 w-4" /> Export Datasets
+          <Button variant="secondary" onClick={() => handleExport('pdf')}>
+            <Download className="mr-2 h-4 w-4" /> Export PDF
           </Button>
-          <Button onClick={() => toast.success('Refreshing analytics metrics')}>
+          <Button variant="secondary" onClick={() => handleExport('csv')}>
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+          <Button onClick={handleSync}>
             <RefreshCw className="mr-2 h-4 w-4 animate-spin" style={{ animationDuration: '4s' }} /> Sync Data
           </Button>
         </div>
@@ -60,44 +105,44 @@ export default function AnalyticsPage() {
       {/* Mini KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <GlassCard className="p-5" hover={true}>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Route Punctuality</p>
-          <p className="mt-3 text-3xl font-bold text-white font-mono">94.8%</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Total Operations Cost</p>
+          <p className="mt-3 text-3xl font-bold text-white font-mono">₹{stats.costs.total.toLocaleString()}</p>
           <div className="mt-4 flex items-center justify-between text-xs text-[#CAC4DA]">
             <span className="flex items-center text-emerald-400 font-semibold gap-0.5">
-              <ArrowUpRight className="h-3 w-3" /> +1.2%
+              <ArrowDownRight className="h-3 w-3" /> Synced
             </span>
-            <span>Vs last month</span>
+            <span>Fuel + Expenses</span>
           </div>
         </GlassCard>
 
         <GlassCard className="p-5" hover={true}>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Odometer Coverage</p>
-          <p className="mt-3 text-3xl font-bold text-white font-mono">14,892 km</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Active Fleet</p>
+          <p className="mt-3 text-3xl font-bold text-white font-mono">{stats.fleet.active}</p>
           <div className="mt-4 flex items-center justify-between text-xs text-[#CAC4DA]">
-            <span className="flex items-center text-rose-400 font-semibold gap-0.5">
-              <ArrowUpRight className="h-3 w-3" /> +8.4%
+            <span className="flex items-center text-sky-400 font-semibold gap-0.5">
+              <ArrowUpRight className="h-3 w-3" /> Live
             </span>
-            <span>Active routing growth</span>
+            <span>Vehicles Available</span>
           </div>
         </GlassCard>
 
         <GlassCard className="p-5" hover={true}>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Idle Fuel Cost Loss</p>
-          <p className="mt-3 text-3xl font-bold text-white font-mono">₹12,400</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Trips Completed</p>
+          <p className="mt-3 text-3xl font-bold text-white font-mono">{stats.operations.completedTrips}</p>
           <div className="mt-4 flex items-center justify-between text-xs text-[#CAC4DA]">
             <span className="flex items-center text-emerald-400 font-semibold gap-0.5">
-              <ArrowDownRight className="h-3 w-3" /> -12.4%
+              <ArrowUpRight className="h-3 w-3" /> 100%
             </span>
-            <span>Optimized transit routing</span>
+            <span>Out of {stats.operations.totalTrips} Total</span>
           </div>
         </GlassCard>
 
         <GlassCard className="p-5" hover={true}>
-          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Driver Safety Tier-1</p>
-          <p className="mt-3 text-3xl font-bold text-[#F66F14] font-mono">82%</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-[#CAC4DA]">Active Operators</p>
+          <p className="mt-3 text-3xl font-bold text-[#F66F14] font-mono">{stats.operations.activeDrivers}</p>
           <div className="mt-4 flex items-center justify-between text-xs text-[#CAC4DA]">
-            <span>Active operators compliance</span>
-            <span>Target: 80%</span>
+            <span>Drivers Available</span>
+            <span>Synced</span>
           </div>
         </GlassCard>
       </div>

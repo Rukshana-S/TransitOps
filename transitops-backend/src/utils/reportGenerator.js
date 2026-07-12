@@ -76,6 +76,12 @@ const fieldConfigs = {
     { key: 'amount', label: 'Amount (INR)' },
     { key: 'status', label: 'Status' },
     { key: 'date', label: 'Date' }
+  ],
+  Analytics: [
+    { key: 'metric', label: 'Metric Name' },
+    { key: 'value', label: 'Value' },
+    { key: 'trend', label: 'Trend' },
+    { key: 'category', label: 'Category' }
   ]
 };
 
@@ -101,9 +107,25 @@ const fetchCategoryData = async (category) => {
     case 'Expense':
       query = 'SELECT * FROM expenses ORDER BY id DESC';
       break;
+    case 'Analytics':
+      // Fetch aggregate stats for analytics report
+      const vStats = await pool.query("SELECT status, count(*) FROM vehicles GROUP BY status");
+      const dStats = await pool.query("SELECT status, count(*) FROM drivers GROUP BY status");
+      const tStats = await pool.query("SELECT status, count(*) FROM trips GROUP BY status");
+      
+      const vActive = vStats.rows.find(r => r.status === 'on trip' || r.status === 'available')?.count || 0;
+      const vMaint = vStats.rows.find(r => r.status === 'maintenance')?.count || 0;
+      
+      return [
+        { metric: 'Active Vehicles', value: vActive, trend: '+', category: 'Fleet' },
+        { metric: 'Vehicles in Maintenance', value: vMaint, trend: '-', category: 'Fleet' },
+        { metric: 'Total Drivers', value: dStats.rows.reduce((acc, r) => acc + parseInt(r.count), 0), trend: '+', category: 'Staff' },
+        { metric: 'Completed Trips', value: tStats.rows.find(r => r.status === 'Completed')?.count || 0, trend: '+', category: 'Operations' }
+      ];
     default:
       throw new Error(`Unsupported category: ${category}`);
   }
+  
   const res = await pool.query(query);
   return res.rows;
 };
